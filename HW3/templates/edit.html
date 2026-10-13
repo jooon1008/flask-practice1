@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>할 일 수정</h2>
+
+<form method="post">
+  <input type="text" name="todo" value="{{ todo.text }}" required>
+  <input type="text" name="note" value="{{ todo.note or '' }}">
+  <button type="submit">저장</button>
+</form>
+
+<a href="{{ url_for('index') }}">취소</a>
+{% endblock %}
