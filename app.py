@@ -1,28 +1,77 @@
-from flask import Flask , render_template
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "<h1>메인 페이지</h1>"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+db = SQLAlchemy(app)
 
-@app.route("/test/<text>")
-def route_sample(text):
-    return f"<h1>{text}</h1>"
 
-@app.route("/about")
-def about():
-    return "<h1>소개 페이지</h1>"
+class Todo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(100), nullable=False)
+    done = db.Column(db.Boolean, default=False)
 
-@app.route("/age/<num>") # 타입 없음
-def age_any(num):
-    return f"<h1>{num} 살— 타입은 {type(num).__name__}</h1>"
+    def __repr__(self):
+        return f'<Todo {self.id} {self.text}>'
 
-@app.route("/age2/<int:num>") # 정수만
-def age_int(num):
-    return f"<h1>{num} 살— 타입은 {type(num).__name__}</h1>"
 
-@app.route("/hi/<name>")
-def hi_template_render(name):
-    return render_template('hi.html',name=name)
+# 할 일 목록 조회 및 추가
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        text = request.form['todo']
 
+        if text.strip():
+            todo = Todo(text=text)
+            db.session.add(todo)
+            db.session.commit()
+
+        return redirect(url_for('index'))
+
+    todos = Todo.query.all()
+    return render_template('index.html', todos=todos)
+
+
+# 할 일 완료 상태 변경
+@app.route('/toggle/<int:id>', methods=['POST'])
+def toggle(id):
+    todo = db.get_or_404(Todo, id)
+
+    todo.done = not todo.done
+    db.session.commit()
+
+    return redirect(url_for('index'))
+
+
+# 할 일 내용 수정
+@app.route('/edit/<int:id>', methods=['POST'])
+def edit(id):
+    todo = db.get_or_404(Todo, id)
+    text = request.form['todo']
+
+    if text.strip():
+        todo.text = text
+        db.session.commit()
+
+    return redirect(url_for('index'))
+
+
+# 할 일 삭제
+@app.route('/delete/<int:id>', methods=['POST'])
+def delete(id):
+    todo = db.get_or_404(Todo, id)
+
+    db.session.delete(todo)
+    db.session.commit()
+
+    return redirect(url_for('index'))
+
+
+# 데이터베이스 테이블 생성
+with app.app_context():
+    db.create_all()
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
